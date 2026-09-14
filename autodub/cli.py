@@ -92,6 +92,10 @@ def run_pipeline(
         print(f"\n[4/6] Initializing TTS engine ({engine_name})...")
         if not voice:
             voice = DEFAULT_PIPER_VOICE if engine_name == "piper" else DEFAULT_EDGE_VOICE
+            if engine_name == "piper" and not str(target_lang).lower().startswith("es"):
+                raise ValueError(
+                    f"default Piper voice is Spanish; pass --voice for target language '{target_lang}'"
+                )
         tts_engine = get_tts_engine(engine_name, voice=voice)
         print(f"  voice: {voice}")
 
