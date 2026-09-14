@@ -53,7 +53,9 @@ def mux_dubbed_video(
             output_video_path,
         ]
 
-    subprocess.check_call(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    proc = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+    if proc.returncode != 0:
+        raise RuntimeError(f"ffmpeg mux failed for {output_video_path}: {proc.stderr[-500:]}")
     return output_video_path
 
 
@@ -91,5 +93,7 @@ def mux_dual_audio_video(
         output_video_path,
     ]
 
-    subprocess.check_call(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    proc = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+    if proc.returncode != 0:
+        raise RuntimeError(f"ffmpeg dual-audio mux failed for {output_video_path}: {proc.stderr[-500:]}")
     return output_video_path

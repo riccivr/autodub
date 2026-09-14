@@ -46,7 +46,9 @@ def extract_audio_for_whisper(video_path: str, audio_output_path: str, threads: 
         "-ac", "1",
         audio_output_path,
     ]
-    subprocess.check_call(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    proc = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+    if proc.returncode != 0:
+        raise RuntimeError(f"ffmpeg extract failed for {video_path}: {proc.stderr[-500:]}")
     return audio_output_path
 
 

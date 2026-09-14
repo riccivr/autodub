@@ -50,7 +50,9 @@ def stretch_or_resample_audio(
         "-acodec", "pcm_s16le",
         output_wav,
     ]
-    subprocess.check_call(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    proc = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+    if proc.returncode != 0:
+        raise RuntimeError(f"ffmpeg atempo failed for {input_wav}: {proc.stderr[-500:]}")
     return output_wav
 
 
