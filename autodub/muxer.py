@@ -75,6 +75,23 @@ def mux_dual_audio_video(
     os.makedirs(os.path.dirname(os.path.abspath(output_video_path)), exist_ok=True)
     th_val = str(threads if threads > 0 else 0)
 
+    probe = subprocess.run(
+        [
+            "ffprobe", "-v", "error",
+            "-select_streams", "a:0",
+            "-show_entries", "stream=index",
+            "-of", "csv=p=0",
+            original_video_path,
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    if probe.returncode != 0 or not probe.stdout.strip():
+        raise RuntimeError(
+            f"dual-audio mux needs an original audio stream on {original_video_path}"
+        )
+
     cmd = [
         "ffmpeg", "-y",
         "-threads", th_val,
