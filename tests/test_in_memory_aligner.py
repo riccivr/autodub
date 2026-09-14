@@ -62,7 +62,7 @@ def test_in_memory_assembly():
 def test_overlapping_segments_no_clobber():
     class UniquePatternTTSEngine:
         """Emits distinct byte patterns per segment."""
-        def synthesize(self, text: str, output_wav_path: str):
+        def synthesize(self, text: str, output_wav_path: str, target_duration=None):
             os.makedirs(os.path.dirname(output_wav_path), exist_ok=True)
             sample_rate = 24000
             num_samples = int(1.0 * sample_rate)  # exactly 1 second
