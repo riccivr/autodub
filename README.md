@@ -1,126 +1,119 @@
-# 🎬 autodub
+autodub
+=======
+autodub is a command-line tool that downloads videos, transcribes speech on
+CPU with faster-whisper, translates text segments, and generates a synchronized
+dubbed audio track using Piper TTS or Edge-TTS.
 
-A lightweight, CPU-friendly command-line tool to automatically download, transcribe, translate, and dub videos from English to Spanish (and other languages) using free and local tools.
+It runs locally without requiring a dedicated GPU, adjusts playback speed per
+segment to match the original speaking window, and preserves background audio
+and music.
 
----
+How it Works
+------------
+1. **Download and extraction**: `yt-dlp` fetches the video stream, and `ffmpeg` extracts a 16 kHz mono WAV audio track.
+2. **Transcription**: `faster-whisper` runs locally on CPU with int8 quantization to generate timestamped speech segments.
+3. **Translation**: Segments are translated to the target language (Spanish by default) while retaining start and end timestamps.
+4. **Speech synthesis**: `piper-tts` synthesizes Spanish speech locally via ONNX (or optionally through `edge-tts`).
+5. **Timeline alignment**: Audio segments are time-stretched with FFmpeg `atempo` when translation length exceeds the speaking window. Silence is generated in-memory to prevent timeline drift.
+6. **Muxing**: `ffmpeg` combines the original video stream, ducks original audio into the background (0.15 volume by default) to keep background effects, and writes the dubbed video.
 
-## ✨ Features
+Features
+--------
+* Runs on CPU: uses int8 quantized CTranslate2 models and ONNX runtimes. No GPU required.
+* Zero timeline drift: in-memory PCM timeline assembly keeps speech aligned with video timestamps across long videos.
+* Background audio retention: ducks original audio rather than muting it, preserving ambient sound and music.
+* Offline default: uses local Piper models. An optional Edge-TTS backend is available for cloud neural voices.
+* Dual-audio output: optional `--dual-audio` flag writes an MKV container with switchable original and dubbed audio tracks.
+* Configurable CPU threading: defaults to 1 core for light background execution, scales to all available cores via `-t`.
 
-- 📥 **Universal Downloader**: Uses `yt-dlp` to download videos from YouTube, Vimeo, X/Twitter, Reddit, or accepts local video files (`.mp4`, `.mkv`, etc.).
-- 🎙️ **Local CPU Transcription**: Uses `faster-whisper` (`base` model with `int8` quantization) for fast, highly accurate speech-to-text with zero GPU requirements.
-- 🌐 **Automatic Translation**: Translates speech segments from English to Spanish while retaining precise sentence boundaries. Supports concurrent translation across worker threads.
-- 🗣️ **Local & Free TTS**:
-  - **Piper TTS (Default)**: 100% offline, local neural speech synthesis via ONNX. Runs in milliseconds on CPU with zero internet needed once downloaded.
-  - **Edge-TTS (Optional)**: Free Microsoft neural voices (e.g. `es-ES-AlvaroNeural`, `es-MX-DaliaNeural`) with near-studio quality and zero setup.
-- ⚡ **Zero-Subprocess In-Memory Alignment**: Synthesizes and stitches PCM audio directly in memory, eliminating hundreds of temporary FFmpeg subprocesses and guaranteeing **zero drift** throughout long videos.
-- 🧵 **Configurable CPU Core Scaling**: Defaults to a single core (`-t 1`) for lightweight background execution, with the ability to unlock all cores (`-t 0` or `-t 16`) for maximum speed.
-- 🎞️ **Dual Output**:
-  - `video_original.mp4`: The untouched original video.
-  - `video_dubbed_es.mp4`: The dubbed Spanish video with soft background audio ducking so sound effects and music are preserved.
-  - `video_dual_audio.mkv` *(optional with `--dual-audio`)*: A single video with switchable English and Spanish audio tracks.
+Requirements
+------------
+* Python 3.9+
+* `ffmpeg` and `ffprobe`
+* `yt-dlp`
 
----
-
-## 🚀 Quick Start (WSL / Linux)
-
-### 1. Requirements
-Ensure `ffmpeg` and `yt-dlp` are installed:
-```bash
-sudo apt update && sudo apt install -y ffmpeg yt-dlp
+On Debian, Ubuntu, or WSL:
+```sh
+sudo apt update && sudo apt install -y ffmpeg yt-dlp python3-venv
 ```
 
-### 2. Setup Virtual Environment
-```bash
+Installation
+------------
+```sh
+git clone https://github.com/riccivr/autodub.git
 cd autodub
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 ```
 
-### 3. Run autodub
-You can run it directly using the provided launcher:
-```bash
-# Default single-core execution (low resource usage)
-./autodub.sh "https://www.youtube.com/watch?v=EXAMPLE_ID"
-
-# Turbo multi-core mode (use all available CPU cores)
-./autodub.sh "https://www.youtube.com/watch?v=EXAMPLE_ID" -t 0
-
-# Specify exact core count (e.g., 4 or 8 cores)
-./autodub.sh "https://www.youtube.com/watch?v=EXAMPLE_ID" -t 8
-
-# Dub with Edge-TTS for ultra-natural neural voices
-./autodub.sh "https://www.youtube.com/watch?v=EXAMPLE_ID" --engine edge-tts -t 0
-
-# Generate an additional dual-audio track file (switch between EN and ES in VLC)
-./autodub.sh "https://www.youtube.com/watch?v=EXAMPLE_ID" --dual-audio
+Usage
+-----
+```sh
+autodub.sh [-l lang] [-s lang] [-t threads] [--engine engine] [--voice voice] [-o dir] [--dual-audio] <url|file>
 ```
 
----
+### Options
+* `-l, --target-lang`: Target language code (default: `es`).
+* `-s, --source-lang`: Source language code (default: `en`).
+* `-t, --threads`: CPU threads to use (default: `1`, use `0` for all cores).
+* `--engine`: TTS engine: `piper` or `edge-tts` (default: `piper`).
+* `--voice`: Specific voice model name.
+* `--whisper-model`: Whisper model size: `tiny`, `base`, `small`, `medium` (default: `base`).
+* `-o, --output-dir`: Output directory for generated files (default: `./output`).
+* `--bg-volume`: Background volume ratio for original audio ducking (default: `0.15`, use `0.0` for full replacement).
+* `--dual-audio`: Output an additional MKV file containing both original and dubbed audio tracks.
+* `--keep-work-dir`: Preserve intermediate segment audio files.
 
-## ⚡ Multi-Core Performance & Scaling
+Examples
+--------
+Dub a YouTube video using the default local Piper model on 1 core:
+```sh
+./autodub.sh "https://www.youtube.com/watch?v=EXAMPLE_ID"
+```
 
-By default, `autodub` runs on **1 CPU core** (`-t 1`), making it quiet and gentle on system resources so you can keep working while it dubs in the background.
+Dub using all available CPU cores:
+```sh
+./autodub.sh -t 0 "https://www.youtube.com/watch?v=EXAMPLE_ID"
+```
 
-When you want videos dubbed as fast as possible, you can scale across your machine's CPU cores:
+Dub using Edge-TTS with a Mexican Spanish voice:
+```sh
+./autodub.sh --engine edge-tts --voice es-MX-DaliaNeural -t 4 "https://www.youtube.com/watch?v=EXAMPLE_ID"
+```
 
-| Command | CPU Cores | Behavior |
-| :--- | :--- | :--- |
-| `./autodub.sh <URL>` | **1 (Default)** | Single core, minimal background footprint. |
-| `./autodub.sh <URL> -t 4` | **4 cores** | 4x faster Whisper CTranslate2 + concurrent translation. |
-| `./autodub.sh <URL> -t 8` | **8 cores** | High-speed processing for medium to long videos. |
-| `./autodub.sh <URL> -t 0` | **Auto (All Cores)** | Detects `nproc` (e.g. 16 cores) and unleashes full CPU capability. |
+Dub a local video file and generate a dual-audio container:
+```sh
+./autodub.sh --dual-audio /path/to/video.mp4
+```
 
-### How Multi-Threading is Applied:
-1. **CTranslate2 / Whisper**: Uses OpenMP across the specified number of threads.
-2. **Translation**: Dispatches segment translation requests concurrently using a thread pool.
-3. **Audio Time-Stretching (`atempo`)**: Runs audio speed alignment in parallel across threads.
-4. **FFmpeg & yt-dlp**: Passes thread counts to FFmpeg encoding and chunk downloading.
+Performance Tuning
+------------------
+By default, autodub uses one thread (`-t 1`) to keep CPU usage low for background execution.
 
----
+For faster processing on multi-core systems:
+* `-t 4`: 4 threads for Whisper transcription and parallel translation requests.
+* `-t 8`: 8 threads for faster processing on medium or long videos.
+* `-t 0`: Uses all detected CPU cores (`os.cpu_count()`).
 
-## 🛠️ Options & Flags
+Supported Voices
+----------------
 
-| Flag | Default | Description |
-| :--- | :--- | :--- |
-| `source` | *(required)* | Video URL (YouTube, Vimeo, etc.) or local video path |
-| `-t`, `--threads` | `1` | CPU threads to use (`1` = single core, `0` = all cores, or specific number) |
-| `-l`, `--target-lang` | `es` | Target language code (`es`, `fr`, `de`, `it`, etc.) |
-| `-s`, `--source-lang` | `en` | Source language code |
-| `--engine` | `piper` | TTS engine: `piper` (offline CPU) or `edge-tts` (free cloud neural) |
-| `--voice` | `None` (auto) | Specific voice name |
-| `--whisper-model` | `base` | Model size: `tiny`, `base`, `small`, `medium` |
-| `-o`, `--output-dir` | `./output` | Output folder for generated videos |
-| `--bg-volume` | `0.15` | Background volume for original audio/music (0.0 to 1.0) |
-| `--dual-audio` | `false` | Also generate a single MKV file with both audio tracks |
-| `--keep-work-dir` | `false` | Retain temporary segment audio files for debugging |
+### Piper (Local / Offline)
+* `es_ES-davefx-medium` (default European Spanish male)
+* `es_ES-sharvard-medium` (European Spanish female)
+* `es_MX-ald-medium` (Mexican Spanish male)
 
----
+### Edge-TTS (Cloud Neural)
+* `es-ES-AlvaroNeural` (default European Spanish male)
+* `es-ES-ElviraNeural` (European Spanish female)
+* `es-MX-DaliaNeural` (Mexican Spanish female)
+* `es-MX-JorgeNeural` (Mexican Spanish male)
 
-## 🎙️ Supported Voices
-
-### Piper Voices (100% Local / Offline)
-- `es_ES-davefx-medium` (Default European Spanish)
-- `es_ES-sharvard-medium` (European Spanish)
-- `es_MX-ald-medium` (Mexican Spanish)
-
-### Edge-TTS Voices (Cloud Neural)
-- `es-ES-AlvaroNeural` (Default European Spanish Male)
-- `es-ES-ElviraNeural` (European Spanish Female)
-- `es-MX-DaliaNeural` (Mexican Spanish Female)
-- `es-MX-JorgeNeural` (Mexican Spanish Male)
-
----
-
-## 🧪 Running Tests
-
-A full test suite is included in `tests/`:
-
-```bash
-# Run all unit tests
+Running Tests
+-------------
+```sh
 .venv/bin/python tests/test_cli_args.py
 .venv/bin/python tests/test_translation_concurrent.py
 .venv/bin/python tests/test_in_memory_aligner.py
-
-# Run end-to-end pipeline test
 .venv/bin/python tests/test_e2e.py
 ```

@@ -17,13 +17,13 @@ def test_translation_serial_and_concurrent():
         {"id": 2, "start": 4.5, "end": 7.0, "duration": 2.5, "text": "This is a test of the translation engine."},
     ]
 
-    print("[TEST] Running serial translation (threads=1)...")
+    print("[test] running serial translation (threads=1)...")
     res_serial = translate_segments(sample_segments, source_lang="en", target_lang="es", threads=1)
     assert len(res_serial) == 3
     assert res_serial[0]["id"] == 0
     assert len(res_serial[0]["text"]) > 0
 
-    print("[TEST] Running concurrent translation (threads=4)...")
+    print("[test] running concurrent translation (threads=4)...")
     res_concurrent = translate_segments(sample_segments, source_lang="en", target_lang="es", threads=4)
     assert len(res_concurrent) == 3
     assert res_concurrent[0]["id"] == 0
@@ -31,9 +31,9 @@ def test_translation_serial_and_concurrent():
     assert res_concurrent[2]["id"] == 2
     assert len(res_concurrent[1]["text"]) > 0
 
-    print("  ✓ Serial & concurrent translation both completed and preserved IDs.")
+    print("  ok: serial and concurrent translation both preserved segment IDs")
 
 
 if __name__ == "__main__":
     test_translation_serial_and_concurrent()
-    print("✓ test_translation_concurrent passed!")
+    print("test_translation_concurrent passed")

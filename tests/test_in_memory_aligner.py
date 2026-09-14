@@ -15,12 +15,11 @@ from autodub.aligner import align_and_assemble_audio, get_wav_info
 
 
 class MockTTSEngine:
-    """Fast mock TTS engine generating 1.0s of 24kHz tone for testing."""
+    """Mock TTS engine generating 1.0s of 24kHz tone for testing."""
     def synthesize(self, text: str, output_wav_path: str):
         os.makedirs(os.path.dirname(output_wav_path), exist_ok=True)
         sample_rate = 24000
-        num_samples = int(1.0 * sample_rate)  # 1.0s of audio
-        # Generate dummy 16-bit audio
+        num_samples = int(1.0 * sample_rate)
         dummy_pcm = b"\x10\x20" * num_samples
         with wave.open(output_wav_path, "wb") as wf:
             wf.setnchannels(1)
@@ -55,11 +54,11 @@ def test_in_memory_assembly():
         assert width == 2
 
         actual_duration = len(frames) / (rate * width)
-        print(f"Total target: {total_duration}s, Actual WAV: {actual_duration}s")
+        print(f"total target: {total_duration}s, actual WAV: {actual_duration}s")
         assert actual_duration >= total_duration
-        print("  ✓ In-memory assembly produced exact required duration.")
+        print("  ok: in-memory assembly matches target duration")
 
 
 if __name__ == "__main__":
     test_in_memory_assembly()
-    print("✓ test_in_memory_aligner passed!")
+    print("test_in_memory_aligner passed")

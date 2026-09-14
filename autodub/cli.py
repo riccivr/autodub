@@ -1,5 +1,5 @@
 """
-autodub command line interface.
+Command-line interface for autodub.
 """
 
 import os
@@ -30,61 +30,58 @@ def run_pipeline(
     dual_audio: bool = False,
     keep_work_dir: bool = False,
 ):
-    # Resolve thread count: 0 means all cores, default is 1
     total_system_cpus = os.cpu_count() or 1
     active_threads = total_system_cpus if threads <= 0 else threads
 
-    print("=" * 60)
-    print(f"🎬 autodub - Video Dubbing Pipeline")
-    print(f"Source:        {source}")
-    print(f"Target Lang:   {target_lang}")
-    print(f"TTS Engine:    {engine_name}")
-    print(f"Whisper Model: {whisper_model}")
-    print(f"CPU Threads:   {active_threads} (of {total_system_cpus} available)")
-    print("=" * 60)
+    print("-" * 60)
+    print("autodub")
+    print(f"source:        {source}")
+    print(f"target lang:   {target_lang}")
+    print(f"tts engine:    {engine_name}")
+    print(f"whisper model: {whisper_model}")
+    print(f"threads:       {active_threads}/{total_system_cpus}")
+    print("-" * 60)
 
     work_dir = tempfile.mkdtemp(prefix="autodub_")
     output_path = Path(output_dir).resolve()
     output_path.mkdir(parents=True, exist_ok=True)
 
     try:
-        # Step 1: Download / Extract media
-        print("\n[1/6] 📥 Fetching media and extracting audio...")
+        # Step 1: Download or prepare media
+        print("\n[1/6] Preparing media and extracting audio...")
         media_info = download_or_prepare_media(source, work_dir, threads=active_threads)
         video_path = media_info["video_path"]
         audio_path = media_info["audio_path"]
         title = media_info["title"]
         duration = media_info["duration"]
         safe_title = "".join(c for c in title if c.isalnum() or c in " ._-").strip()[:100]
-        print(f"  ✓ Video: '{title}' ({duration:.1f}s)")
+        print(f"  video: {title} ({duration:.1f}s)")
 
-        # Save a copy of the original video in output_dir if downloaded
         original_output = output_path / f"{safe_title}_original.mp4"
         if not original_output.exists():
             shutil.copyfile(video_path, str(original_output))
-            print(f"  ✓ Original video saved: {original_output.name}")
+            print(f"  original saved: {original_output.name}")
 
         # Step 2: Transcribe with Whisper
-        print(f"\n[2/6] 🎙️ Transcribing audio with faster-whisper ({whisper_model}, {active_threads} threads)...")
+        print(f"\n[2/6] Transcribing with faster-whisper ({whisper_model}, {active_threads} threads)...")
         segments = transcribe_audio(
             audio_path,
             model_size=whisper_model,
             language=source_lang,
             threads=active_threads,
         )
-        print(f"  ✓ Transcribed {len(segments)} speech segments.")
+        print(f"  transcribed {len(segments)} segments")
         if not segments:
-            print("  ⚠️ No speech detected in video! Exiting.")
+            print("  no speech detected in audio file")
             return
 
-        # Preview first few segments
         for seg in segments[:3]:
             print(f"    [{seg['start']:.1f}s -> {seg['end']:.1f}s] {seg['text']}")
         if len(segments) > 3:
-            print(f"    ... and {len(segments) - 3} more segments.")
+            print(f"    ... and {len(segments) - 3} more segments")
 
         # Step 3: Translate segments
-        print(f"\n[3/6] 🌐 Translating segments to '{target_lang}' ({active_threads} threads)...")
+        print(f"\n[3/6] Translating segments to '{target_lang}' ({active_threads} threads)...")
         translated_segments = translate_segments(
             segments,
             source_lang=source_lang,
@@ -93,17 +90,17 @@ def run_pipeline(
         )
         for seg in translated_segments[:3]:
             print(f"    [{seg['start']:.1f}s -> {seg['end']:.1f}s] {seg['text']}")
-        print(f"  ✓ Translated {len(translated_segments)} segments.")
+        print(f"  translated {len(translated_segments)} segments")
 
         # Step 4: Initialize TTS Engine
-        print(f"\n[4/6] 🗣️ Initializing TTS Engine ({engine_name})...")
+        print(f"\n[4/6] Initializing TTS engine ({engine_name})...")
         if not voice:
             voice = DEFAULT_PIPER_VOICE if engine_name == "piper" else DEFAULT_EDGE_VOICE
         tts_engine = get_tts_engine(engine_name, voice=voice)
-        print(f"  ✓ TTS Engine ready with voice: {voice}")
+        print(f"  voice: {voice}")
 
         # Step 5: Synthesize and Align Audio
-        print("\n[5/6] ⏱️ Synthesizing speech and assembling timeline in memory...")
+        print("\n[5/6] Synthesizing speech and assembling audio track...")
         dubbed_wav = align_and_assemble_audio(
             translated_segments,
             tts_engine=tts_engine,
@@ -111,10 +108,10 @@ def run_pipeline(
             work_dir=work_dir,
             threads=active_threads,
         )
-        print("  ✓ Full dubbed audio track assembled.")
+        print("  assembled dubbed audio track")
 
         # Step 6: Remux Video
-        print("\n[6/6] 🎞️ Remuxing final video...")
+        print("\n[6/6] Remuxing final video...")
         dubbed_output = output_path / f"{safe_title}_dubbed_{target_lang}.mp4"
         mux_dubbed_video(
             original_video_path=video_path,
@@ -123,7 +120,7 @@ def run_pipeline(
             background_volume=background_volume,
             threads=active_threads,
         )
-        print(f"  🎉 Dubbed video created: {dubbed_output}")
+        print(f"  output: {dubbed_output}")
 
         if dual_audio:
             dual_output = output_path / f"{safe_title}_dual_audio.mkv"
@@ -134,38 +131,38 @@ def run_pipeline(
                 target_lang_code=target_lang,
                 threads=active_threads,
             )
-            print(f"  🎉 Dual-track video created: {dual_output}")
+            print(f"  dual audio: {dual_output}")
 
-        print("\n" + "=" * 60)
-        print("✨ Dubbing Complete!")
-        print(f"1. Original: {original_output}")
-        print(f"2. Dubbed:   {dubbed_output}")
+        print("\n" + "-" * 60)
+        print("Completed:")
+        print(f"  Original: {original_output}")
+        print(f"  Dubbed:   {dubbed_output}")
         if dual_audio:
-            print(f"3. Dual:     {dual_output}")
-        print("=" * 60)
+            print(f"  Dual:     {dual_output}")
+        print("-" * 60)
 
     finally:
         if not keep_work_dir and os.path.exists(work_dir):
             shutil.rmtree(work_dir, ignore_errors=True)
         elif keep_work_dir:
-            print(f"\n[Debug] Work directory kept at: {work_dir}")
+            print(f"\nTemporary files preserved at: {work_dir}")
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="autodub - Local, CPU-friendly automatic video dubbing CLI"
+        description="autodub - non-interactive video dubbing tool"
     )
-    parser.add_argument("source", help="Video URL (YouTube, Vimeo, etc.) or local file path")
-    parser.add_argument("-l", "--target-lang", default="es", help="Target language code (default: es)")
-    parser.add_argument("-s", "--source-lang", default="en", help="Source language code (default: en)")
-    parser.add_argument("-t", "--threads", type=int, default=1, help="CPU threads to use (default: 1. Use 0 for all available cores)")
-    parser.add_argument("--engine", choices=["piper", "edge-tts"], default="piper", help="TTS Engine: 'piper' (local CPU) or 'edge-tts' (free cloud neural)")
-    parser.add_argument("--voice", default=None, help="Voice model or name")
+    parser.add_argument("source", help="video URL or local file path")
+    parser.add_argument("-l", "--target-lang", default="es", help="target language code (default: es)")
+    parser.add_argument("-s", "--source-lang", default="en", help="source language code (default: en)")
+    parser.add_argument("-t", "--threads", type=int, default=1, help="CPU threads to use (default: 1, use 0 for all cores)")
+    parser.add_argument("--engine", choices=["piper", "edge-tts"], default="piper", help="TTS engine: piper or edge-tts (default: piper)")
+    parser.add_argument("--voice", default=None, help="voice model or name")
     parser.add_argument("--whisper-model", default="base", choices=["tiny", "base", "small", "medium"], help="Whisper model size (default: base)")
-    parser.add_argument("-o", "--output-dir", default="./output", help="Output directory for generated videos")
-    parser.add_argument("--bg-volume", type=float, default=0.15, help="Background volume of original audio track (0.0 to 1.0, default: 0.15)")
-    parser.add_argument("--dual-audio", action="store_true", help="Generate an additional dual-audio track file (MKV)")
-    parser.add_argument("--keep-work-dir", action="store_true", help="Keep scratch/intermediate files for inspection")
+    parser.add_argument("-o", "--output-dir", default="./output", help="output directory (default: ./output)")
+    parser.add_argument("--bg-volume", type=float, default=0.15, help="background audio volume ducking ratio (default: 0.15)")
+    parser.add_argument("--dual-audio", action="store_true", help="output an additional dual-audio MKV file")
+    parser.add_argument("--keep-work-dir", action="store_true", help="retain temporary segment files")
 
     args = parser.parse_args()
 
