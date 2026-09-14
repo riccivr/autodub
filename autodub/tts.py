@@ -41,6 +41,30 @@ def voice_lang_prefix(voice_name: str) -> Optional[str]:
     return None
 
 
+def _wav_duration(path: str) -> float:
+    import wave
+    try:
+        with wave.open(path, "rb") as wf:
+            rate = wf.getframerate()
+            if rate <= 0:
+                return 0.0
+            return wf.getnframes() / float(rate)
+    except Exception:
+        return 0.0
+
+
+def _piper_synthesis_config():
+    try:
+        from piper.config import SynthesisConfig
+        return SynthesisConfig()
+    except Exception:
+        try:
+            from piper import SynthesisConfig
+            return SynthesisConfig()
+        except Exception:
+            return None
+
+
 def assert_voice_matches_target(voice_name: str, target_lang: str, engine_name: str = "piper"):
     """Reject a resolved voice whose language prefix disagrees with -l."""
     prefix = voice_lang_prefix(voice_name)
@@ -102,41 +126,42 @@ class PiperTTSEngine:
         except Exception as exc:
             raise RuntimeError(f"Failed to load Piper voice {self.model_path}") from exc
 
+    def _write_wav(self, text, output_wav_path, syn_config=None):
+        import wave
+        with wave.open(output_wav_path, "wb") as wav_file:
+            if syn_config is None:
+                self.voice.synthesize_wav(text, wav_file)
+            else:
+                self.voice.synthesize_wav(text, wav_file, syn_config=syn_config)
+
     def synthesize(self, text: str, output_wav_path: str, target_duration=None):
         """Synthesize text to output_wav_path using Piper."""
         os.makedirs(os.path.dirname(output_wav_path) or ".", exist_ok=True)
-        import wave
-        syn_kwargs = {}
-        if target_duration and target_duration > 0:
-            try:
-                from piper.config import SynthesisConfig
-            except Exception:
-                try:
-                    from piper import SynthesisConfig
-                except Exception:
-                    SynthesisConfig = None
-            if SynthesisConfig is not None:
-                # First pass at default rate, then rescale if we can estimate.
-                # length_scale > 1 is slower. Rough char-rate estimate: 12 chars/sec.
-                estimated = max(0.4, len(text) / 12.0)
-                length_scale = max(0.6, min(estimated / float(target_duration), 1.8))
-                syn_kwargs["syn_config"] = SynthesisConfig(length_scale=length_scale)
-        with wave.open(output_wav_path, "wb") as wav_file:
-            self.voice.synthesize_wav(text, wav_file, **syn_kwargs)
+        self._write_wav(text, output_wav_path)
+        if not target_duration or target_duration <= 0:
+            return
+        actual = _wav_duration(output_wav_path)
+        if actual <= 0 or abs(actual - target_duration) / target_duration <= 0.05:
+            return
+        syn_config = _piper_synthesis_config()
+        if syn_config is None:
+            return
+        # length_scale > 1 is slower / longer. Fit the measured first pass.
+        length_scale = max(0.6, min(target_duration / actual, 1.8))
+        syn_config.length_scale = length_scale
+        self._write_wav(text, output_wav_path, syn_config=syn_config)
 
 
 class EdgeTTSEngine:
     def __init__(self, voice_name: str = DEFAULT_EDGE_VOICE):
         self.voice_name = voice_name
 
-    def synthesize(self, text: str, output_wav_path: str, target_duration=None):
-        """Synthesize text and convert Edge-TTS MP3 output to 24 kHz mono s16 WAV."""
+    def _synthesize_to_wav(self, text: str, output_wav_path: str, rate: str = "+0%"):
         import edge_tts
-        os.makedirs(os.path.dirname(output_wav_path) or ".", exist_ok=True)
         raw_path = output_wav_path + ".edge.bin"
 
         async def _run():
-            communicate = edge_tts.Communicate(text, self.voice_name)
+            communicate = edge_tts.Communicate(text, self.voice_name, rate=rate)
             await communicate.save(raw_path)
 
         try:
@@ -155,6 +180,22 @@ class EdgeTTSEngine:
         finally:
             if os.path.exists(raw_path):
                 os.remove(raw_path)
+
+    def synthesize(self, text: str, output_wav_path: str, target_duration=None):
+        """Synthesize text and convert Edge-TTS MP3 output to 24 kHz mono s16 WAV."""
+        os.makedirs(os.path.dirname(output_wav_path) or ".", exist_ok=True)
+        self._synthesize_to_wav(text, output_wav_path, rate="+0%")
+        if not target_duration or target_duration <= 0:
+            return
+        actual = _wav_duration(output_wav_path)
+        if actual <= 0 or abs(actual - target_duration) / target_duration <= 0.05:
+            return
+        # Edge rate="+50%" is 1.5x faster. Clamp to +/- 40% to keep it intelligible.
+        speed = max(0.6, min(actual / target_duration, 1.4))
+        percent = int(round((speed - 1.0) * 100))
+        rate = f"{percent:+d}%"
+        if rate != "+0%":
+            self._synthesize_to_wav(text, output_wav_path, rate=rate)
 
 
 def get_tts_engine(engine_name: str = "piper", voice: Optional[str] = None):
