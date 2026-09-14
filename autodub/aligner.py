@@ -80,7 +80,7 @@ def align_and_assemble_audio(
 
     # Synthesize sequentially (TTS models are optimized internally)
     for idx, seg, raw_path in synth_tasks:
-        tts_engine.synthesize(seg["text"], raw_path)
+        tts_engine.synthesize(seg["text"], raw_path, target_duration=seg.get("duration"))
 
     # Step 2: Determine which segments need time stretching or sample rate adjustment
     process_tasks = []

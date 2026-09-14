@@ -79,19 +79,34 @@ class PiperTTSEngine:
         except Exception as exc:
             raise RuntimeError(f"Failed to load Piper voice {self.model_path}") from exc
 
-    def synthesize(self, text: str, output_wav_path: str):
+    def synthesize(self, text: str, output_wav_path: str, target_duration=None):
         """Synthesize text to output_wav_path using Piper."""
         os.makedirs(os.path.dirname(output_wav_path) or ".", exist_ok=True)
         import wave
+        syn_kwargs = {}
+        if target_duration and target_duration > 0:
+            try:
+                from piper.config import SynthesisConfig
+            except Exception:
+                try:
+                    from piper import SynthesisConfig
+                except Exception:
+                    SynthesisConfig = None
+            if SynthesisConfig is not None:
+                # First pass at default rate, then rescale if we can estimate.
+                # length_scale > 1 is slower. Rough char-rate estimate: 12 chars/sec.
+                estimated = max(0.4, len(text) / 12.0)
+                length_scale = max(0.6, min(estimated / float(target_duration), 1.8))
+                syn_kwargs["syn_config"] = SynthesisConfig(length_scale=length_scale)
         with wave.open(output_wav_path, "wb") as wav_file:
-            self.voice.synthesize_wav(text, wav_file)
+            self.voice.synthesize_wav(text, wav_file, **syn_kwargs)
 
 
 class EdgeTTSEngine:
     def __init__(self, voice_name: str = DEFAULT_EDGE_VOICE):
         self.voice_name = voice_name
 
-    def synthesize(self, text: str, output_wav_path: str):
+    def synthesize(self, text: str, output_wav_path: str, target_duration=None):
         """Synthesize text and convert Edge-TTS MP3 output to 24 kHz mono s16 WAV."""
         import edge_tts
         os.makedirs(os.path.dirname(output_wav_path) or ".", exist_ok=True)
