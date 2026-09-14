@@ -25,6 +25,7 @@ How it Works
 Features
 --------
 * Runs on CPU: uses int8 quantized CTranslate2 models and ONNX runtimes. No GPU required.
+* Whisper defaults to `base` with `beam_size=1` (greedy) for CPU speed, not max accuracy. Use `--whisper-model small` or `medium` when quality matters.
 * Zero timeline drift: in-memory PCM timeline assembly keeps speech aligned with video timestamps across long videos.
 * Background audio retention: ducks original audio rather than muting it, preserving ambient sound and music.
 * Local Piper TTS after the voice is cached. Translation, first-run model download, Edge-TTS, and yt-dlp still need network.
