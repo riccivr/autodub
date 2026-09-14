@@ -74,8 +74,8 @@ def test_overlapping_segments_no_clobber():
                 wf.writeframes(byte_val * num_samples)
 
     with tempfile.TemporaryDirectory() as work_dir:
-        # Segment 0 ends at 1.0s + 1.0s = 2.0s.
-        # Segment 1 claims start at 1.5s (overlapping).
+        # Segment 0 wants 1.0s from 1.0s. Segment 1 is cued at 1.5s.
+        # Trim the first clip to the next cue instead of sliding the second clip late.
         segments = [
             {"id": 0, "start": 1.0, "end": 2.0, "duration": 1.0, "text": "first segment"},
             {"id": 1, "start": 1.5, "end": 2.5, "duration": 1.0, "text": "second segment"},
@@ -89,13 +89,11 @@ def test_overlapping_segments_no_clobber():
             sample_rate=24000,
         )
         rate, width, channels, frames = get_wav_info(output_wav)
-        # All 24000 samples of \xAA\xAA (48000 bytes) must remain intact starting at sample 24000 (1.0s)
-        first_segment_bytes = frames[24000 * 2 : 48000 * 2]
-        assert first_segment_bytes == b"\xAA\xAA" * 24000, "First segment was clobbered by overlap"
-        # Second segment should start immediately after at sample 48000 (2.0s)
-        second_segment_bytes = frames[48000 * 2 : 72000 * 2]
-        assert second_segment_bytes == b"\xBB\xBB" * 24000, "Second segment was not shifted to occupied_until"
-        print("  ok: overlapping segments are shifted and not clobbered")
+        first_segment_bytes = frames[24000 * 2 : 36000 * 2]
+        assert first_segment_bytes == b"\xAA\xAA" * 12000, "First segment was not trimmed to next cue"
+        second_segment_bytes = frames[36000 * 2 : 60000 * 2]
+        assert second_segment_bytes == b"\xBB\xBB" * 24000, "Second segment missed its original start"
+        print("  ok: overlapping segments are trimmed to the next cue")
 
 
 if __name__ == "__main__":

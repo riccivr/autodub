@@ -138,10 +138,16 @@ def align_and_assemble_audio(
             start_sample = occupied_until
         num_samples = len(pcm_bytes) // bytes_per_sample
 
-        if start_sample >= total_samples:
+        if idx + 1 < len(segments):
+            next_start_sample = int(segments[idx + 1]["start"] * sample_rate)
+        else:
+            next_start_sample = total_samples
+        max_end_sample = min(total_samples, next_start_sample)
+
+        if start_sample >= max_end_sample:
             continue
 
-        insert_samples = min(num_samples, total_samples - start_sample)
+        insert_samples = min(num_samples, max_end_sample - start_sample)
         start_byte = start_sample * bytes_per_sample
         end_byte = start_byte + (insert_samples * bytes_per_sample)
 
