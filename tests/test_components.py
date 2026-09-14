@@ -36,12 +36,17 @@ def test_translator():
 
 def test_edge_tts():
     print("\n[test] testing edge-tts synthesis...")
+    import wave
     from autodub.tts import EdgeTTSEngine
     engine = EdgeTTSEngine(voice_name="es-ES-AlvaroNeural")
-    test_wav = "/tmp/test_edge.mp3"
+    test_wav = "/tmp/test_edge.wav"
     engine.synthesize("Hola, esta es una prueba de voz.", test_wav)
     assert os.path.exists(test_wav) and os.path.getsize(test_wav) > 0
-    print(f"  ok: edge-tts generated {os.path.getsize(test_wav)} bytes")
+    with wave.open(test_wav, "rb") as wf:
+        assert wf.getnchannels() == 1
+        assert wf.getframerate() == 24000
+        assert wf.getsampwidth() == 2
+    print(f"  ok: edge-tts generated valid WAV ({os.path.getsize(test_wav)} bytes)")
     os.remove(test_wav)
 
 
