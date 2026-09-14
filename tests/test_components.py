@@ -60,6 +60,13 @@ def test_piper_tts():
     print(f"  ok: piper-tts generated {os.path.getsize(test_wav)} bytes")
     os.remove(test_wav)
 
+    # Test target_duration fitting
+    test_wav_fast = "/tmp/test_piper_fast.wav"
+    engine.synthesize("Hola, esta es una prueba con Piper para evaluar el ajuste de duración.", test_wav_fast, target_duration=1.2)
+    assert os.path.exists(test_wav_fast) and os.path.getsize(test_wav_fast) > 0
+    os.remove(test_wav_fast)
+    print("  ok: piper-tts adapts to target_duration")
+
 
 if __name__ == "__main__":
     test_imports()
