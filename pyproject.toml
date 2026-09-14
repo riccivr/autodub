@@ -23,3 +23,7 @@ separate = ["demucs>=4.0.0"]
 
 [project.scripts]
 autodub = "autodub.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["autodub*"]
+
