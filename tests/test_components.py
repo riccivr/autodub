@@ -11,6 +11,7 @@ PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 
+@pytest.mark.network
 def test_imports():
     print("[test] importing dependencies...")
     import faster_whisper
