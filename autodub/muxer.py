@@ -61,13 +61,14 @@ def mux_dual_audio_video(
     original_video_path: str,
     dubbed_audio_path: str,
     output_video_path: str,
-    target_lang_code: str = "spa",
+    target_lang_code: str = "es",
+    source_lang_code: str = "en",
     threads: int = 1,
 ) -> str:
     """
-    Create a container with both English and dubbed Spanish audio tracks.
-    Track 0: Original Audio (English)
-    Track 1: Dubbed Audio (Spanish)
+    Create a container with original and dubbed audio tracks.
+    Track 0: Original audio
+    Track 1: Dubbed audio
     """
     os.makedirs(os.path.dirname(os.path.abspath(output_video_path)), exist_ok=True)
     th_val = str(threads if threads > 0 else 0)
@@ -83,10 +84,10 @@ def mux_dual_audio_video(
         "-c:v", "copy",
         "-c:a", "aac",
         "-b:a", "192k",
-        "-metadata:s:a:0", "language=eng",
-        "-metadata:s:a:0", "title=Original (English)",
+        "-metadata:s:a:0", f"language={source_lang_code}",
+        "-metadata:s:a:0", f"title=Original ({source_lang_code})",
         "-metadata:s:a:1", f"language={target_lang_code}",
-        "-metadata:s:a:1", "title=Dubbed (Spanish)",
+        "-metadata:s:a:1", f"title=Dubbed ({target_lang_code})",
         output_video_path,
     ]
 

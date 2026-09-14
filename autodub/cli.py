@@ -129,6 +129,7 @@ def run_pipeline(
                 dubbed_audio_path=dubbed_wav,
                 output_video_path=str(dual_output),
                 target_lang_code=target_lang,
+                source_lang_code=source_lang,
                 threads=active_threads,
             )
             print(f"  dual audio: {dual_output}")
