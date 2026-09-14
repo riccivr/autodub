@@ -1,6 +1,7 @@
 """Optional vocal/accompaniment separation via Demucs."""
 
 import os
+import sys
 import shutil
 import subprocess
 from pathlib import Path
@@ -33,7 +34,7 @@ def separate_accompaniment(audio_or_video_path: str, work_dir: str, threads: int
     out_root = Path(work_dir) / "demucs"
     out_root.mkdir(parents=True, exist_ok=True)
     cmd = [
-        os.environ.get("PYTHON", "python3"), "-m", "demucs",
+        sys.executable, "-m", "demucs",
         "--two-stems", "vocals",
         "-n", "htdemucs",
         "-o", str(out_root),
