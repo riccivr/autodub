@@ -35,32 +35,19 @@ def test_translation_serial_and_concurrent():
 
 
 def test_translation_failure_raises_runtime_error():
-    import autodub.translator as trans_mod
+    from unittest.mock import patch
+    from autodub.translator import translate_text
 
-    # Temporarily monkeypatch translators to fail
-    class FailingTranslator:
-        def __init__(self, *args, **kwargs):
-            pass
-        def translate(self, text):
-            raise ConnectionError("Mocked network failure")
-
-    orig_mm = trans_mod.MyMemoryTranslator
-    orig_gg = trans_mod.GoogleTranslator
-    trans_mod.MyMemoryTranslator = FailingTranslator
-    trans_mod.GoogleTranslator = FailingTranslator
-
-    try:
+    with patch("deep_translator.MyMemoryTranslator.translate", side_effect=ConnectionError("Mocked network failure")), \
+         patch("deep_translator.GoogleTranslator.translate", side_effect=ConnectionError("Mocked network failure")):
         failed = False
         try:
-            trans_mod.translate_text("Test sentence", source_lang="en", target_lang="es")
+            translate_text("Test sentence", source_lang="en", target_lang="es", backend="cloud")
         except RuntimeError as err:
             failed = True
             assert "translation failed for en->es" in str(err)
         assert failed, "Expected RuntimeError on translation failure"
         print("  ok: translation failure raises RuntimeError as expected")
-    finally:
-        trans_mod.MyMemoryTranslator = orig_mm
-        trans_mod.GoogleTranslator = orig_gg
 
 
 if __name__ == "__main__":
