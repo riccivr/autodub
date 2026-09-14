@@ -26,19 +26,20 @@ def translate_text(text: str, source_lang: str = "en", target_lang: str = "es") 
         translated = MyMemoryTranslator(source=src_mm, target=tgt_mm).translate(text)
         if translated and translated.strip():
             return translated.strip()
-    except Exception:
-        pass
+    except Exception as exc:
+        print(f"  warn: MyMemory failed: {exc}")
 
     # 2. Try GoogleTranslator
     try:
         translated = GoogleTranslator(source=source_lang, target=target_lang).translate(text)
         if translated and translated.strip():
             return translated.strip()
-    except Exception:
-        pass
+    except Exception as exc:
+        print(f"  warn: GoogleTranslator failed: {exc}")
 
-    # Fallback to original text if both fail
-    return text
+    raise RuntimeError(
+        f"translation failed for {source_lang}->{target_lang}: {text[:80]!r}"
+    )
 
 
 def translate_segments(
@@ -73,7 +74,7 @@ def translate_segments(
         return translated_segments
 
     # Concurrent execution when threads > 1
-    max_workers = min(32, workers * 2)
+    max_workers = min(4, workers)
 
     def _translate_item(seg):
         translated = translate_text(seg["text"], source_lang=source_lang, target_lang=target_lang)
