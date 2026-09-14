@@ -8,6 +8,9 @@ It runs locally without requiring a dedicated GPU, adjusts playback speed per
 segment to match the original speaking window, and preserves background audio
 and music.
 
+Translation uses MyMemory/Google and needs network. Only Piper TTS is offline
+after the voice model is cached. Edge-TTS and yt-dlp also need network.
+
 How it Works
 ------------
 1. **Download and extraction**: `yt-dlp` fetches the video stream, and `ffmpeg` extracts a 16 kHz mono WAV audio track.
@@ -44,6 +47,7 @@ git clone https://github.com/riccivr/autodub.git
 cd autodub
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
+.venv/bin/pip install -e .
 ```
 
 Usage
