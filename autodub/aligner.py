@@ -118,15 +118,22 @@ def align_and_assemble_audio(
     total_samples = int(max(total_duration, max((s["end"] for s in segments), default=0.0) + 1.0) * sample_rate)
     bytes_per_sample = 2  # 16-bit PCM mono
     master_buffer = bytearray(total_samples * bytes_per_sample)
+    occupied_until = 0
+    dropped = 0
 
     for idx, seg in enumerate(segments):
         audio_file = processed_results[idx]
         try:
             r, w, ch, pcm_bytes = get_wav_info(audio_file)
-        except Exception:
+        except Exception as exc:
+            preview = (seg.get("text") or "")[:40]
+            print(f"  warn: skip segment {idx} ({preview!r}): {exc}")
+            dropped += 1
             continue
 
         start_sample = int(seg["start"] * sample_rate)
+        if start_sample < occupied_until:
+            start_sample = occupied_until
         num_samples = len(pcm_bytes) // bytes_per_sample
 
         if start_sample >= total_samples:
@@ -137,6 +144,10 @@ def align_and_assemble_audio(
         end_byte = start_byte + (insert_samples * bytes_per_sample)
 
         master_buffer[start_byte:end_byte] = pcm_bytes[: insert_samples * bytes_per_sample]
+        occupied_until = start_sample + insert_samples
+
+    if dropped:
+        print(f"  warn: dropped {dropped}/{len(segments)} segments during assembly")
 
     # Step 5: Write the single master WAV file
     with wave.open(final_dubbed_wav, "wb") as wf:
