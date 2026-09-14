@@ -3,12 +3,11 @@ Text-to-Speech (TTS) module supporting Piper TTS (offline local ONNX) and Edge-T
 """
 
 import os
-import sys
 import asyncio
 import subprocess
 import urllib.request
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Optional
 
 # Pre-defined voice models for Piper TTS on Hugging Face
 PIPER_VOICE_MAP = {
