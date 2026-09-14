@@ -43,7 +43,9 @@ def test_translation_failure_raises_runtime_error():
     from unittest.mock import patch
     from autodub.translator import translate_text
 
-    with patch("deep_translator.MyMemoryTranslator.translate", side_effect=ConnectionError("Mocked network failure")), \
+    with patch("autodub.translator._translate_google_client", return_value=None), \
+         patch("autodub.translator._translate_google_api", return_value=None), \
+         patch("deep_translator.MyMemoryTranslator.translate", side_effect=ConnectionError("Mocked network failure")), \
          patch("deep_translator.GoogleTranslator.translate", side_effect=ConnectionError("Mocked network failure")):
         failed = False
         try:

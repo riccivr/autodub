@@ -39,9 +39,35 @@ def test_ollama_backend_is_used():
     assert out[0]["text"] == "Hola"
 
 
+def test_batch_translation_success():
+    segs = [
+        {"id": 0, "start": 0.0, "end": 1.0, "duration": 1.0, "text": "Hello"},
+        {"id": 1, "start": 1.0, "end": 2.0, "duration": 1.0, "text": "World"},
+    ]
+    with patch("autodub.translator._translate_google_client", return_value="Hola\nMundo") as mock:
+        out = translate_segments(segs, backend="auto")
+    mock.assert_called_once_with("Hello\nWorld", "en", "es")
+    assert out[0]["text"] == "Hola"
+    assert out[1]["text"] == "Mundo"
+
+
+def test_batch_translation_fallback_on_mismatch():
+    segs = [
+        {"id": 0, "start": 0.0, "end": 1.0, "duration": 1.0, "text": "Hello"},
+        {"id": 1, "start": 1.0, "end": 2.0, "duration": 1.0, "text": "World"},
+    ]
+    with patch("autodub.translator._translate_google_client", return_value="Only one line returned"), \
+         patch("autodub.translator.translate_text", side_effect=["Fallback1", "Fallback2"]):
+        out = translate_segments(segs, backend="auto")
+    assert out[0]["text"] == "Fallback1"
+    assert out[1]["text"] == "Fallback2"
+
+
 if __name__ == "__main__":
     test_unknown_backend()
     test_empty_text_short_circuit()
     test_argos_backend_is_used()
     test_ollama_backend_is_used()
+    test_batch_translation_success()
+    test_batch_translation_fallback_on_mismatch()
     print("test_translator_backends passed")
