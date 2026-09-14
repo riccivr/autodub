@@ -20,6 +20,8 @@ from autodub.tts import (
 )
 from autodub.aligner import align_and_assemble_audio
 from autodub.muxer import mux_dubbed_video, mux_dual_audio_video
+from autodub.srt import write_srt
+from autodub.separator import separate_accompaniment
 
 
 def run_pipeline(
@@ -34,6 +36,9 @@ def run_pipeline(
     background_volume: float = 0.15,
     dual_audio: bool = False,
     keep_work_dir: bool = False,
+    translator_backend: str = "auto",
+    write_subtitles: bool = True,
+    separate_vocals: bool = False,
 ):
     total_system_cpus = os.cpu_count() or 1
     active_threads = total_system_cpus if threads <= 0 else threads
@@ -43,6 +48,7 @@ def run_pipeline(
     print(f"source:        {source}")
     print(f"target lang:   {target_lang}")
     print(f"tts engine:    {engine_name}")
+    print(f"translator:    {translator_backend}")
     print(f"whisper model: {whisper_model}")
     print(f"threads:       {active_threads}/{total_system_cpus}")
     print("-" * 60)
@@ -82,12 +88,13 @@ def run_pipeline(
             print(f"    ... and {len(segments) - 3} more segments")
 
         # Step 3: Translate segments
-        print(f"\n[3/6] Translating segments to '{target_lang}' ({active_threads} threads)...")
+        print(f"\n[3/6] Translating segments to '{target_lang}' ({translator_backend}, {active_threads} threads)...")
         translated_segments = translate_segments(
             segments,
             source_lang=source_lang,
             target_lang=target_lang,
             threads=active_threads,
+            backend=translator_backend,
         )
         for seg in translated_segments[:3]:
             print(f"    [{seg['start']:.1f}s -> {seg['end']:.1f}s] {seg['text']}")
@@ -112,6 +119,20 @@ def run_pipeline(
         )
         print("  assembled dubbed audio track")
 
+        accompaniment = None
+        if separate_vocals:
+            print("\n[5b/6] Separating vocals from accompaniment (Demucs)...")
+            accompaniment = separate_accompaniment(video_path, work_dir, threads=active_threads)
+            print(f"  accompaniment: {accompaniment}")
+
+        orig_srt = trans_srt = None
+        if write_subtitles:
+            orig_srt = output_path / f"{safe_title}_{source_lang}.srt"
+            trans_srt = output_path / f"{safe_title}_{target_lang}.srt"
+            write_srt(segments, str(orig_srt), text_key="text")
+            write_srt(translated_segments, str(trans_srt), text_key="text")
+            print(f"  subtitles: {orig_srt.name}, {trans_srt.name}")
+
         # Step 6: Remux Video
         print("\n[6/6] Remuxing final video...")
         dubbed_output = output_path / f"{safe_title}_dubbed_{target_lang}.mp4"
@@ -121,6 +142,7 @@ def run_pipeline(
             output_video_path=str(dubbed_output),
             background_volume=background_volume,
             threads=active_threads,
+            background_audio_path=accompaniment,
         )
         print(f"  output: {dubbed_output}")
 
@@ -140,6 +162,9 @@ def run_pipeline(
         print("Completed:")
         print(f"  Source: {original_output}")
         print(f"  Dubbed: {dubbed_output}")
+        if write_subtitles:
+            print(f"  Subs:   {orig_srt}")
+            print(f"          {trans_srt}")
         if dual_audio:
             print(f"  Dual:   {dual_output}")
         print("-" * 60)
@@ -166,6 +191,18 @@ def build_parser():
     parser.add_argument("--bg-volume", type=float, default=0.15, help="background audio volume ducking ratio (default: 0.15)")
     parser.add_argument("--dual-audio", action="store_true", help="output an additional dual-audio MKV file")
     parser.add_argument("--keep-work-dir", action="store_true", help="retain temporary segment files")
+    parser.add_argument(
+        "--translator",
+        choices=["auto", "cloud", "argos", "ollama"],
+        default="auto",
+        help="translation backend (default: auto = MyMemory/Google)",
+    )
+    parser.add_argument("--no-srt", action="store_true", help="do not write SRT subtitle files")
+    parser.add_argument(
+        "--separate-vocals",
+        action="store_true",
+        help="split vocals with Demucs and mix accompaniment at full level",
+    )
     return parser
 
 
@@ -184,6 +221,9 @@ def main():
         background_volume=args.bg_volume,
         dual_audio=args.dual_audio,
         keep_work_dir=args.keep_work_dir,
+        translator_backend=args.translator,
+        write_subtitles=not args.no_srt,
+        separate_vocals=args.separate_vocals,
     )
 
 

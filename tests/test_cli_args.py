@@ -83,6 +83,7 @@ def test_reject_explicit_spanish_voice_on_fr():
 
 if __name__ == "__main__":
     test_cli_defaults()
+    test_cli_new_product_flags()
     test_cli_custom_threads()
     test_reject_default_piper_voice_on_non_es()
     test_reject_default_edge_voice_on_non_es()

@@ -13,14 +13,37 @@ def mux_dubbed_video(
     output_video_path: str,
     background_volume: float = 0.15,
     threads: int = 1,
+    background_audio_path: str = None,
 ) -> str:
     """
     Combine original video stream with the dubbed audio track.
-    If background_volume > 0, ducks original audio into the background to keep
-    music and sound effects intact.
+    If background_audio_path is set (separated accompaniment), mix that at
+    full level with the dubbed voice. Otherwise duck the original mix.
     """
     os.makedirs(os.path.dirname(os.path.abspath(output_video_path)), exist_ok=True)
     th_val = str(threads if threads > 0 else 0)
+
+    if background_audio_path:
+        filter_str = "[1:a]volume=1.0[bg];[2:a]volume=1.0[voice];[bg][voice]amix=inputs=2:duration=first[aout]"
+        cmd = [
+            "ffmpeg", "-y",
+            "-threads", th_val,
+            "-i", original_video_path,
+            "-i", background_audio_path,
+            "-i", dubbed_audio_path,
+            "-filter_complex", filter_str,
+            "-map", "0:v:0",
+            "-map", "[aout]",
+            "-c:v", "copy",
+            "-c:a", "aac",
+            "-b:a", "192k",
+            "-shortest",
+            output_video_path,
+        ]
+        proc = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+        if proc.returncode != 0:
+            raise RuntimeError(f"ffmpeg mux failed for {output_video_path}: {proc.stderr[-500:]}")
+        return output_video_path
 
     if background_volume > 0.0:
         filter_str = f"[0:a]volume={background_volume:.2f}[bg];[1:a]volume=1.0[voice];[bg][voice]amix=inputs=2:duration=first[aout]"
