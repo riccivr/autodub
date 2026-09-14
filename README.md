@@ -25,7 +25,7 @@ Features
 * Runs on CPU: uses int8 quantized CTranslate2 models and ONNX runtimes. No GPU required.
 * Zero timeline drift: in-memory PCM timeline assembly keeps speech aligned with video timestamps across long videos.
 * Background audio retention: ducks original audio rather than muting it, preserving ambient sound and music.
-* Offline default: uses local Piper models. An optional Edge-TTS backend is available for cloud neural voices.
+* Local Piper TTS after the voice is cached. Translation, first-run model download, Edge-TTS, and yt-dlp still need network.
 * Dual-audio output: optional `--dual-audio` flag writes an MKV container with switchable original and dubbed audio tracks.
 * Configurable CPU threading: defaults to 1 core for light background execution, scales to all available cores via `-t`.
 
