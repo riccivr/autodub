@@ -56,11 +56,7 @@ def run_pipeline(
         duration = media_info["duration"]
         safe_title = "".join(c for c in title if c.isalnum() or c in " ._-").strip()[:100]
         print(f"  video: {title} ({duration:.1f}s)")
-
-        original_output = output_path / f"{safe_title}_original.mp4"
-        if not original_output.exists():
-            shutil.copyfile(video_path, str(original_output))
-            print(f"  original saved: {original_output.name}")
+        original_output = Path(video_path)
 
         # Step 2: Transcribe with Whisper
         print(f"\n[2/6] Transcribing with faster-whisper ({whisper_model}, {active_threads} threads)...")
@@ -136,10 +132,10 @@ def run_pipeline(
 
         print("\n" + "-" * 60)
         print("Completed:")
-        print(f"  Original: {original_output}")
-        print(f"  Dubbed:   {dubbed_output}")
+        print(f"  Source: {original_output}")
+        print(f"  Dubbed: {dubbed_output}")
         if dual_audio:
-            print(f"  Dual:     {dual_output}")
+            print(f"  Dual:   {dual_output}")
         print("-" * 60)
 
     finally:
