@@ -59,6 +59,46 @@ def test_in_memory_assembly():
         print("  ok: in-memory assembly matches target duration")
 
 
+def test_overlapping_segments_no_clobber():
+    class UniquePatternTTSEngine:
+        """Emits distinct byte patterns per segment."""
+        def synthesize(self, text: str, output_wav_path: str):
+            os.makedirs(os.path.dirname(output_wav_path), exist_ok=True)
+            sample_rate = 24000
+            num_samples = int(1.0 * sample_rate)  # exactly 1 second
+            byte_val = b"\xAA\xAA" if "first" in text else b"\xBB\xBB"
+            with wave.open(output_wav_path, "wb") as wf:
+                wf.setnchannels(1)
+                wf.setsampwidth(2)
+                wf.setframerate(sample_rate)
+                wf.writeframes(byte_val * num_samples)
+
+    with tempfile.TemporaryDirectory() as work_dir:
+        # Segment 0 ends at 1.0s + 1.0s = 2.0s.
+        # Segment 1 claims start at 1.5s (overlapping).
+        segments = [
+            {"id": 0, "start": 1.0, "end": 2.0, "duration": 1.0, "text": "first segment"},
+            {"id": 1, "start": 1.5, "end": 2.5, "duration": 1.0, "text": "second segment"},
+        ]
+        output_wav = align_and_assemble_audio(
+            segments=segments,
+            tts_engine=UniquePatternTTSEngine(),
+            total_duration=5.0,
+            work_dir=work_dir,
+            threads=1,
+            sample_rate=24000,
+        )
+        rate, width, channels, frames = get_wav_info(output_wav)
+        # All 24000 samples of \xAA\xAA (48000 bytes) must remain intact starting at sample 24000 (1.0s)
+        first_segment_bytes = frames[24000 * 2 : 48000 * 2]
+        assert first_segment_bytes == b"\xAA\xAA" * 24000, "First segment was clobbered by overlap"
+        # Second segment should start immediately after at sample 48000 (2.0s)
+        second_segment_bytes = frames[48000 * 2 : 72000 * 2]
+        assert second_segment_bytes == b"\xBB\xBB" * 24000, "Second segment was not shifted to occupied_until"
+        print("  ok: overlapping segments are shifted and not clobbered")
+
+
 if __name__ == "__main__":
     test_in_memory_assembly()
+    test_overlapping_segments_no_clobber()
     print("test_in_memory_aligner passed")
