@@ -16,7 +16,7 @@ from autodub.aligner import align_and_assemble_audio, get_wav_info
 
 class MockTTSEngine:
     """Mock TTS engine generating 1.0s of 24kHz tone for testing."""
-    def synthesize(self, text: str, output_wav_path: str):
+    def synthesize(self, text: str, output_wav_path: str, target_duration=None):
         os.makedirs(os.path.dirname(output_wav_path), exist_ok=True)
         sample_rate = 24000
         num_samples = int(1.0 * sample_rate)

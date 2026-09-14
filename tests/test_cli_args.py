@@ -1,5 +1,5 @@
 """
-Test CLI argument parsing and defaults.
+Test CLI argument parsing and defaults against the real parser.
 """
 
 import sys
@@ -8,33 +8,22 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from autodub.cli import build_parser
+
 
 def test_cli_defaults():
-    import argparse
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("source")
-    parser.add_argument("-t", "--threads", type=int, default=1)
-    parser.add_argument("-l", "--target-lang", default="es")
-    parser.add_argument("--engine", default="piper")
-
-    args = parser.parse_args(["https://example.com/video"])
+    args = build_parser().parse_args(["https://example.com/video"])
     assert args.threads == 1
     assert args.target_lang == "es"
+    assert args.source_lang == "en"
     assert args.engine == "piper"
 
 
 def test_cli_custom_threads():
-    import argparse
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("source")
-    parser.add_argument("-t", "--threads", type=int, default=1)
-
-    args = parser.parse_args(["https://example.com/video", "-t", "8"])
+    args = build_parser().parse_args(["https://example.com/video", "-t", "8"])
     assert args.threads == 8
 
-    args_zero = parser.parse_args(["https://example.com/video", "-t", "0"])
+    args_zero = build_parser().parse_args(["https://example.com/video", "-t", "0"])
     assert args_zero.threads == 0
 
 

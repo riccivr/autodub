@@ -149,7 +149,7 @@ def run_pipeline(
             print(f"\nTemporary files preserved at: {work_dir}")
 
 
-def main():
+def build_parser():
     parser = argparse.ArgumentParser(
         description="autodub - non-interactive video dubbing tool"
     )
@@ -164,8 +164,11 @@ def main():
     parser.add_argument("--bg-volume", type=float, default=0.15, help="background audio volume ducking ratio (default: 0.15)")
     parser.add_argument("--dual-audio", action="store_true", help="output an additional dual-audio MKV file")
     parser.add_argument("--keep-work-dir", action="store_true", help="retain temporary segment files")
+    return parser
 
-    args = parser.parse_args()
+
+def main():
+    args = build_parser().parse_args()
 
     run_pipeline(
         source=args.source,
