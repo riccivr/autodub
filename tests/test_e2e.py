@@ -58,15 +58,22 @@ def main():
     out_path = Path(output_dir)
     dubbed_files = list(out_path.glob("*dubbed_es.mp4"))
     dual_files = list(out_path.glob("*dual_audio.mkv"))
+    orig_srt = list(out_path.glob("*_en.srt"))
+    trans_srt = list(out_path.glob("*_es.srt"))
 
     print("\n[e2e] step 3: verifying generated files...")
     assert len(dubbed_files) > 0, "dubbed video missing"
     assert len(dual_files) > 0, "dual-audio mkv missing"
+    assert len(orig_srt) > 0, "original SRT missing"
+    assert len(trans_srt) > 0, "translated SRT missing"
 
     dubbed = dubbed_files[0]
     dual = dual_files[0]
     print(f"  dubbed video: {dubbed.name} ({dubbed.stat().st_size} bytes)")
     print(f"  dual-audio video: {dual.name} ({dual.stat().st_size} bytes)")
+    print(f"  srt: {orig_srt[0].name}, {trans_srt[0].name}")
+    assert orig_srt[0].stat().st_size > 0
+    assert trans_srt[0].stat().st_size > 0
     assert dubbed.stat().st_size > 1000
     assert dual.stat().st_size > 1000
 
