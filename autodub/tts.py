@@ -76,28 +76,15 @@ class PiperTTSEngine:
         try:
             from piper import PiperVoice
             self.voice = PiperVoice.load(str(self.model_path))
-        except Exception:
-            # Fallback to piper CLI if python binding fails
-            self.voice = None
+        except Exception as exc:
+            raise RuntimeError(f"Failed to load Piper voice {self.model_path}") from exc
 
     def synthesize(self, text: str, output_wav_path: str):
         """Synthesize text to output_wav_path using Piper."""
-        os.makedirs(os.path.dirname(output_wav_path), exist_ok=True)
-        if self.voice is not None:
-            import wave
-            with wave.open(output_wav_path, "wb") as wav_file:
-                self.voice.synthesize_wav(text, wav_file)
-        else:
-            # CLI fallback
-            cmd = [
-                sys.executable, "-m", "piper",
-                "--model", str(self.model_path),
-                "--output_file", output_wav_path,
-            ]
-            process = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            stdout, stderr = process.communicate(input=text)
-            if process.returncode != 0:
-                raise RuntimeError(f"Piper synthesis error: {stderr}")
+        os.makedirs(os.path.dirname(output_wav_path) or ".", exist_ok=True)
+        import wave
+        with wave.open(output_wav_path, "wb") as wav_file:
+            self.voice.synthesize_wav(text, wav_file)
 
 
 class EdgeTTSEngine:
@@ -105,15 +92,31 @@ class EdgeTTSEngine:
         self.voice_name = voice_name
 
     def synthesize(self, text: str, output_wav_path: str):
-        """Synthesize text to output_wav_path using Edge-TTS."""
+        """Synthesize text and convert Edge-TTS MP3 output to 24 kHz mono s16 WAV."""
         import edge_tts
-        os.makedirs(os.path.dirname(output_wav_path), exist_ok=True)
+        os.makedirs(os.path.dirname(output_wav_path) or ".", exist_ok=True)
+        raw_path = output_wav_path + ".edge.bin"
 
         async def _run():
             communicate = edge_tts.Communicate(text, self.voice_name)
-            await communicate.save(output_wav_path)
+            await communicate.save(raw_path)
 
-        asyncio.run(_run())
+        try:
+            asyncio.run(_run())
+            cmd = [
+                "ffmpeg", "-y",
+                "-i", raw_path,
+                "-ar", "24000",
+                "-ac", "1",
+                "-acodec", "pcm_s16le",
+                output_wav_path,
+            ]
+            proc = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+            if proc.returncode != 0:
+                raise RuntimeError(f"ffmpeg failed converting Edge-TTS audio: {proc.stderr[-500:]}")
+        finally:
+            if os.path.exists(raw_path):
+                os.remove(raw_path)
 
 
 def get_tts_engine(engine_name: str = "piper", voice: Optional[str] = None):
