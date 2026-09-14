@@ -34,6 +34,36 @@ def test_translation_serial_and_concurrent():
     print("  ok: serial and concurrent translation both preserved segment IDs")
 
 
+def test_translation_failure_raises_runtime_error():
+    import autodub.translator as trans_mod
+
+    # Temporarily monkeypatch translators to fail
+    class FailingTranslator:
+        def __init__(self, *args, **kwargs):
+            pass
+        def translate(self, text):
+            raise ConnectionError("Mocked network failure")
+
+    orig_mm = trans_mod.MyMemoryTranslator
+    orig_gg = trans_mod.GoogleTranslator
+    trans_mod.MyMemoryTranslator = FailingTranslator
+    trans_mod.GoogleTranslator = FailingTranslator
+
+    try:
+        failed = False
+        try:
+            trans_mod.translate_text("Test sentence", source_lang="en", target_lang="es")
+        except RuntimeError as err:
+            failed = True
+            assert "translation failed for en->es" in str(err)
+        assert failed, "Expected RuntimeError on translation failure"
+        print("  ok: translation failure raises RuntimeError as expected")
+    finally:
+        trans_mod.MyMemoryTranslator = orig_mm
+        trans_mod.GoogleTranslator = orig_gg
+
+
 if __name__ == "__main__":
     test_translation_serial_and_concurrent()
+    test_translation_failure_raises_runtime_error()
     print("test_translation_concurrent passed")
