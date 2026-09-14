@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "autodub"
+version = "0.1.0"
+description = "Local, CPU-friendly automatic video dubbing CLI"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "faster-whisper>=1.0.0",
+    "piper-tts>=1.2.0",
+    "deep-translator>=1.11.0",
+    "edge-tts>=7.0.0",
+    "tqdm>=4.66.0"
+]
+
+[project.scripts]
+autodub = "autodub.cli:main"

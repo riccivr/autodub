@@ -1,0 +1,25 @@
+# Environments
+.venv/
+env/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+
+# Media & Outputs
+output/
+tests/output/
+*.mp4
+*.mkv
+*.wav
+*.mp3
+
+# Testing & Cache
+.pytest_cache/
+.coverage
+htmlcov/

@@ -1,0 +1,5 @@
+faster-whisper>=1.0.0
+piper-tts>=1.2.0
+deep-translator>=1.11.0
+edge-tts>=7.0.0
+tqdm>=4.66.0
