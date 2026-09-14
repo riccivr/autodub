@@ -3,7 +3,6 @@ Command-line interface for autodub.
 """
 
 import os
-import sys
 import shutil
 import argparse
 import tempfile
