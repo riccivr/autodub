@@ -20,6 +20,18 @@ def test_cli_defaults():
     assert args.engine == "piper"
 
 
+def test_cli_new_product_flags():
+    args = build_parser().parse_args([
+        "video.mp4",
+        "--translator", "argos",
+        "--separate-vocals",
+        "--no-srt",
+    ])
+    assert args.translator == "argos"
+    assert args.separate_vocals is True
+    assert args.no_srt is True
+
+
 def test_cli_custom_threads():
     args = build_parser().parse_args(["https://example.com/video", "-t", "8"])
     assert args.threads == 8

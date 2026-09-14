@@ -8,7 +8,12 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+import pytest
+
 from autodub.translator import translate_segments
+
+pytestmark = pytest.mark.network
+
 
 def test_translation_serial_and_concurrent():
     sample_segments = [

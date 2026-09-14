@@ -8,8 +8,10 @@ It runs locally without requiring a dedicated GPU, adjusts playback speed per
 segment to match the original speaking window, and preserves background audio
 and music.
 
-Translation uses MyMemory/Google and needs network. Only Piper TTS is offline
-after the voice model is cached. Edge-TTS and yt-dlp also need network.
+Translation defaults to MyMemory/Google (`--translator auto`). Pass
+`--translator argos` or `--translator ollama` for a local backend. Piper TTS
+is offline after the voice is cached. Edge-TTS, yt-dlp, and first-run Argos
+package installs need network.
 
 How it Works
 ------------
@@ -27,6 +29,9 @@ Features
 * Background audio retention: ducks original audio rather than muting it, preserving ambient sound and music.
 * Local Piper TTS after the voice is cached. Translation, first-run model download, Edge-TTS, and yt-dlp still need network.
 * Dual-audio output: optional `--dual-audio` flag writes an MKV container with switchable original and dubbed audio tracks.
+* Subtitles: writes original and translated `.srt` files next to the dubbed video.
+* Local translation: `--translator argos` or `--translator ollama`.
+* Optional vocal split: `--separate-vocals` (Demucs) so music stays full-level.
 * Configurable CPU threading: defaults to 1 core for light background execution, scales to all available cores via `-t`.
 
 Requirements
@@ -53,7 +58,9 @@ python3 -m venv .venv
 Usage
 -----
 ```sh
-autodub.sh [-l lang] [-s lang] [-t threads] [--engine engine] [--voice voice] [-o dir] [--dual-audio] <url|file>
+autodub.sh [-l lang] [-s lang] [-t threads] [--engine engine] [--voice voice]
+          [--translator auto|cloud|argos|ollama] [--separate-vocals] [--no-srt]
+          [-o dir] [--dual-audio] <url|file>
 ```
 
 ### Options
@@ -67,6 +74,9 @@ autodub.sh [-l lang] [-s lang] [-t threads] [--engine engine] [--voice voice] [-
 * `--bg-volume`: Background volume ratio for original audio ducking (default: `0.15`, use `0.0` for full replacement).
 * `--dual-audio`: Output an additional MKV file containing both original and dubbed audio tracks.
 * `--keep-work-dir`: Preserve intermediate segment audio files.
+* `--translator`: `auto`/`cloud` (MyMemory then Google), `argos` (local Argos Translate), or `ollama` (local LLM). Default: `auto`.
+* `--no-srt`: Do not write original and translated `.srt` files.
+* `--separate-vocals`: Run Demucs, keep accompaniment at full level, replace only speech. Requires `pip install demucs`.
 
 Examples
 --------
@@ -88,6 +98,19 @@ Dub using Edge-TTS with a Mexican Spanish voice:
 Dub a local video file and generate a dual-audio container:
 ```sh
 ./autodub.sh --dual-audio /path/to/video.mp4
+```
+
+Local translation plus vocal separation:
+```sh
+./autodub.sh --translator argos --separate-vocals /path/to/video.mp4
+```
+
+Ollama translation uses `OLLAMA_HOST` (default `http://127.0.0.1:11434`) and
+`AUTODUB_OLLAMA_MODEL` (default `llama3.2`).
+
+Optional extras:
+```sh
+.venv/bin/pip install -e ".[local,separate,dev]"
 ```
 
 Performance Tuning
@@ -116,8 +139,7 @@ Supported Voices
 Running Tests
 -------------
 ```sh
-.venv/bin/python tests/test_cli_args.py
-.venv/bin/python tests/test_translation_concurrent.py
-.venv/bin/python tests/test_in_memory_aligner.py
+.venv/bin/pip install -e ".[dev]"
+.venv/bin/pytest -m "not network"
 .venv/bin/python tests/test_e2e.py
 ```

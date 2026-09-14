@@ -5,6 +5,7 @@ Unit tests for autodub components.
 import os
 import sys
 from pathlib import Path
+import pytest
 
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -19,6 +20,7 @@ def test_imports():
     print("  ok: all modules imported successfully")
 
 
+@pytest.mark.network
 def test_translator():
     print("\n[test] testing translation...")
     from autodub.translator import translate_segments
@@ -34,6 +36,7 @@ def test_translator():
     print("  ok: translation works")
 
 
+@pytest.mark.network
 def test_edge_tts():
     print("\n[test] testing edge-tts synthesis...")
     import wave
@@ -50,6 +53,7 @@ def test_edge_tts():
     os.remove(test_wav)
 
 
+@pytest.mark.network
 def test_piper_tts():
     print("\n[test] testing piper-tts synthesis...")
     from autodub.tts import PiperTTSEngine
