@@ -12,7 +12,12 @@ from pathlib import Path
 from autodub.downloader import download_or_prepare_media
 from autodub.transcriber import transcribe_audio
 from autodub.translator import translate_segments
-from autodub.tts import get_tts_engine, DEFAULT_PIPER_VOICE, DEFAULT_EDGE_VOICE
+from autodub.tts import (
+    get_tts_engine,
+    DEFAULT_PIPER_VOICE,
+    DEFAULT_EDGE_VOICE,
+    assert_voice_matches_target,
+)
 from autodub.aligner import align_and_assemble_audio
 from autodub.muxer import mux_dubbed_video, mux_dual_audio_video
 
@@ -92,10 +97,7 @@ def run_pipeline(
         print(f"\n[4/6] Initializing TTS engine ({engine_name})...")
         if not voice:
             voice = DEFAULT_PIPER_VOICE if engine_name == "piper" else DEFAULT_EDGE_VOICE
-            if engine_name == "piper" and not str(target_lang).lower().startswith("es"):
-                raise ValueError(
-                    f"default Piper voice is Spanish; pass --voice for target language '{target_lang}'"
-                )
+        assert_voice_matches_target(voice, target_lang, engine_name=engine_name)
         tts_engine = get_tts_engine(engine_name, voice=voice)
         print(f"  voice: {voice}")
 

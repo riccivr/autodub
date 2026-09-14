@@ -53,13 +53,38 @@ def test_reject_default_piper_voice_on_non_es():
                 run_pipeline(source=dummy_mp4, target_lang="fr", engine_name="piper", voice=None)
             except ValueError as err:
                 failed = True
-                assert "default Piper voice is Spanish" in str(err)
+                assert "target language is 'fr'" in str(err)
             assert failed, "Expected ValueError when target_lang='fr' and voice=None"
     print("  ok: rejected default Spanish Piper voice for non-Spanish target")
+
+
+def test_reject_default_edge_voice_on_non_es():
+    from autodub.tts import assert_voice_matches_target, DEFAULT_EDGE_VOICE
+    failed = False
+    try:
+        assert_voice_matches_target(DEFAULT_EDGE_VOICE, "fr", engine_name="edge-tts")
+    except ValueError as err:
+        failed = True
+        assert "target language is 'fr'" in str(err)
+    assert failed
+    print("  ok: rejected default Spanish Edge voice for non-Spanish target")
+
+
+def test_reject_explicit_spanish_voice_on_fr():
+    from autodub.tts import assert_voice_matches_target
+    failed = False
+    try:
+        assert_voice_matches_target("es_ES-davefx-medium", "fr", engine_name="piper")
+    except ValueError:
+        failed = True
+    assert failed
+    print("  ok: rejected explicit Spanish Piper voice for French target")
 
 
 if __name__ == "__main__":
     test_cli_defaults()
     test_cli_custom_threads()
     test_reject_default_piper_voice_on_non_es()
+    test_reject_default_edge_voice_on_non_es()
+    test_reject_explicit_spanish_voice_on_fr()
     print("test_cli_args passed")

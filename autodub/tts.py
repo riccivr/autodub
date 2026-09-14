@@ -29,6 +29,30 @@ DEFAULT_PIPER_VOICE = "es_ES-davefx-medium"
 DEFAULT_EDGE_VOICE = "es-ES-AlvaroNeural"
 
 
+def voice_lang_prefix(voice_name: str) -> Optional[str]:
+    """Return ISO-639-1 prefix from a Piper or Edge voice name, if present."""
+    if not voice_name:
+        return None
+    name = Path(voice_name).name.lower()
+    if len(name) >= 3 and name[2] in "-_":
+        prefix = name[:2]
+        if prefix.isalpha():
+            return prefix
+    return None
+
+
+def assert_voice_matches_target(voice_name: str, target_lang: str, engine_name: str = "piper"):
+    """Reject a resolved voice whose language prefix disagrees with -l."""
+    prefix = voice_lang_prefix(voice_name)
+    lang = (target_lang or "").lower().replace("_", "-")
+    lang_prefix = lang.split("-")[0]
+    if prefix and lang_prefix and prefix != lang_prefix:
+        raise ValueError(
+            f"{engine_name} voice {voice_name!r} is '{prefix}' but target language is '{target_lang}'; "
+            f"pass --voice for {target_lang}"
+        )
+
+
 def get_cache_dir() -> Path:
     """Return local cache directory for models."""
     cache = Path(os.environ.get("AUTODUB_CACHE", Path.home() / ".cache" / "autodub"))
